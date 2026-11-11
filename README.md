@@ -25,7 +25,7 @@ Unlike basic single-threaded crawlers, ShadeMaper decouples the graphical user i
 * **Hybrid Event Loop Architecture (`PySide6` + `qasync`):** Integrates Qt's main GUI thread with Python's `asyncio` event loop. This prevents UI freezes while hundreds of concurrent network coroutines, log streams, and WebGL canvas updates execute simultaneously.
 * **Distributed Task Broker & State Management (`Redis`):** Uses Redis in-memory data structures (`task_queue`, `visited`, `scheduled_queue`) with connection keep-alive and automatic retry policies to coordinate asynchronous worker pools, guarantee URL deduplication, and prevent cyclic crawling traps.
 * **CPU-Bound Offloading (`ProcessPoolExecutor`):** Isolates heavy heuristic scoring and payload analysis tasks into separate worker processes, bypassing Python's Global Interpreter Lock (GIL) so network coroutines remain non-blocking.
-* **Hardware-Accelerated Graph Engine (`VivaGraphJS` + `Chromium`):** Embeds a Chromium engine via `QWebEngineView` to render large node networks via WebGL. Graph traversal algorithms compute and highlight the shortest paths from the root domain to high-value or anomalous endpoints within 20–30 seconds of scanning.
+* **Hardware-Accelerated Graph Engine (`VivaGraphJS` + `Chromium`):** Embeds a Chromium engine via `QWebEngineView` to render large node networks via WebGL. Graph traversal algorithms compute and highlight the shortest paths from the root domain to vuln  endpoints within 20–30 seconds of scanning if target has them.
 
 ---
 
